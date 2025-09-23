@@ -8,6 +8,7 @@
 
 #include "Renderer/Shader.h"
 #include "Renderer/Buffers.h"
+#include "Renderer/Camera.h"
 
 struct AppData
 {
@@ -24,8 +25,13 @@ public:
 private:
 	GLFWwindow* m_Window;
 	AppData m_data;
+
 	Shader shader;
 	VertexArray* VAO = nullptr;
 	VertexBuffer* VBO = nullptr;
 	ElementBuffer* EBO = nullptr;
+	ComputeShader* computeShader = nullptr;
+
+	Camera camera;
+	uint32_t cameraUBO = 0;
 };

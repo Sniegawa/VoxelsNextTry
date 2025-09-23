@@ -1,6 +1,10 @@
 #include "Application.h"
+#include "PerlinNoise.hpp"
 
 #include <cstdio>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
+#include <random>
 
 void error_callback(int error, const char* description)
 {
@@ -13,11 +17,12 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
 }
+static uint64_t voxelCount = 0;
 
 App::App()
 {
 	m_data.WindowWidth = 800;
-	m_data.WindowHeight = 600;
+	m_data.WindowHeight = 800;
 
 	if (!glfwInit())
 	{
@@ -27,8 +32,8 @@ App::App()
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	
-	m_Window = glfwCreateWindow(m_data.WindowWidth, m_data.WindowHeight, "VOXELS",nullptr,nullptr);
+
+	m_Window = glfwCreateWindow(m_data.WindowWidth, m_data.WindowHeight, "VOXELS", nullptr, nullptr);
 	glfwMakeContextCurrent(m_Window);
 
 	int version = gladLoadGL();
@@ -39,6 +44,9 @@ App::App()
 	}
 	glfwSetErrorCallback(error_callback);
 	glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
+
+	camera.Setup(m_Window);
+
 	shader.Create(std::filesystem::absolute("Shaders/shader.vert"), std::filesystem::absolute("Shaders/shader.frag"));
 
 	float quadVertices[] = {
@@ -59,22 +67,131 @@ App::App()
 	EBO = new ElementBuffer(quadIndices, sizeof(quadIndices));
 	VAO->Unbind();
 
+	computeShader = new ComputeShader(std::filesystem::absolute("Shaders/computeExample.glsl"), m_data.WindowWidth, m_data.WindowHeight);
 
+	glGenBuffers(1, &cameraUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), nullptr, GL_DYNAMIC_DRAW);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
+
+	const int GRID_SIZE = 512;
+	std::vector<uint8_t> voxels(GRID_SIZE * GRID_SIZE * GRID_SIZE, 0);
+
+	auto index = [&](int x, int y, int z) { return x + y * GRID_SIZE + z * GRID_SIZE * GRID_SIZE; };
+
+	const siv::PerlinNoise::seed_type seed = 12456u;
+
+	const siv::PerlinNoise perlin{ seed };
+
+	std::mt19937 rng(std::random_device{}());
+	std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+
+	if (0)
+	{
+		for (int x = 0; x < GRID_SIZE; ++x)
+			for (int y = 0; y < GRID_SIZE; ++y)
+				for (int z = 0; z < GRID_SIZE; ++z)
+				{
+					const double noise = perlin.octave3D_01((x * 0.01), (y * 0.01), (z * 0.01), 4);
+					if (noise < 0.4f)
+					{
+						voxels[index(x, y, z)] = 1;
+						voxelCount++;
+					}
+				}
+	}
+	else
+	{
+		for (int x = 0; x < GRID_SIZE; ++x)
+		{
+			for (int z = 0; z < GRID_SIZE; ++z)
+			{
+				const double noise = perlin.octave2D_01((x * 0.0015), (z * 0.0015), 8);
+				int maxY = int(GRID_SIZE * noise);
+				for (int y = 0; y < maxY; ++y)
+				{	
+					if (y >= maxY-5)
+					{
+						if(dist(rng) >= 0.5f)
+							voxels[index(x, y, z)] = 5;
+						else 
+							voxels[index(x, y, z)] = 6;
+					}
+					else if (y > maxY - 200)
+					{
+						// Normalize x to [0,1]
+						float chance = pow(float(maxY - y) / 200.0f, 2.6f);
+
+						float r = dist(rng);      // random number 0..1
+						voxels[index(x, y, z)] = (r < chance) ? (dist(rng) >= 0.02f ? 3 : 4) : (dist(rng) >= 0.5f ? 1 : 2);
+					}
+					else
+					{
+						if (dist(rng) >= 0.1f)
+							voxels[index(x, y, z)] = 3;
+						else
+							voxels[index(x, y, z)] = 4;
+					}
+					voxelCount++;
+				}
+			}
+		}
+	}
+
+	GLuint voxelTex3D;
+	glGenTextures(1, &voxelTex3D);
+	glBindTexture(GL_TEXTURE_3D, voxelTex3D);
+
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, GRID_SIZE, GRID_SIZE, GRID_SIZE, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, voxels.data());
+
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+	glUseProgram(computeShader->GetProgramID());
+
+	glActiveTexture(GL_TEXTURE1);
+	glUniform1i(glGetUniformLocation(computeShader->GetProgramID(), "voxelTex"), 0);
+
+	glUniform1i(glGetUniformLocation(computeShader->GetProgramID(), "voxelGridSize"), GRID_SIZE);
 	this->Run();
 }
 
 App::~App()
 {
+	delete VAO, VBO, EBO;
+	delete computeShader;
+
 	glfwDestroyWindow(m_Window);
 	glfwTerminate();
 }
 
 void App::Run()
 {
+
+	double lastTime = glfwGetTime();
+	int frames = 0;
 	while (!glfwWindowShouldClose(m_Window))
 	{
 		glClearColor(0.2f, 0.2f, 0.6f, 1.0f);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+		camera.CalculateMatricesFromInputs(m_Window);
+		computeShader->Bind();
+		glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
+		CameraData& data = camera.getData();
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data);
+
+		glUniform2i(glGetUniformLocation(computeShader->GetProgramID(),"iResolution"), 800, 800);
+
+		computeShader->Dispatch();
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+		
+		computeShader->BindTexture();
+
 		
 		shader.Bind();
 		VAO->Bind();
@@ -85,6 +202,22 @@ void App::Run()
 
 		glfwSwapBuffers(m_Window);
 		glfwPollEvents();
+
+		double currentTime = glfwGetTime();
+		frames++;
+		if (currentTime - lastTime >= 1.0) { // every second
+			double fps = double(frames) / (currentTime - lastTime);
+			double ms = 1000.0 / fps;
+
+			std::ostringstream title;
+			title << "FPS: " << std::fixed << std::setprecision(1) << fps
+				<< " | " << std::setprecision(6) << ms << " ms" << " Voxels : " << voxelCount;
+			glfwSetWindowTitle(m_Window, title.str().c_str());
+
+			frames = 0;
+			lastTime = currentTime;
+		}
+
 	}
 }
 

@@ -98,22 +98,83 @@ void Shader::Unbind()
 	glUseProgram(0);
 }
 
-ComputeShader::ComputeShader()
+ComputeShader::ComputeShader(const std::filesystem::path& path,uint32_t width, uint32_t height)
+	: m_Width(width),m_Height(height)
 {
+	std::string content = LoadShaderFromFile(path);
 
+	const char* content_source = content.c_str();
+
+	uint32_t computeID = glCreateShader(GL_COMPUTE_SHADER);
+
+	glShaderSource(computeID, 1, &content_source, nullptr);
+	glCompileShader(computeID);
+
+	GLint success;
+	glGetShaderiv(computeID, GL_COMPILE_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[1024];
+		glGetShaderInfoLog(computeID, 1024, nullptr, infoLog);
+		std::cerr << "Compute Shader Compilation Error:\n" << infoLog << "\n";
+	}
+
+	m_ProgramID = glCreateProgram();
+	glAttachShader(m_ProgramID, computeID);
+	glLinkProgram(m_ProgramID);
+
+	glGetProgramiv(m_ProgramID, GL_LINK_STATUS, &success);
+	if (!success)
+	{
+		char infoLog[1024];
+		glGetProgramInfoLog(m_ProgramID, 1024, nullptr, infoLog);
+		std::cerr << "Compute Shader Linking Error:\n" << infoLog << "\n";
+	}
+
+	glDeleteShader(computeID);
+
+	CreateTexture(width, height);
 }
 
 ComputeShader::~ComputeShader()
 {
-
+	glDeleteProgram(m_ProgramID);
+	glDeleteTextures(1,&m_ComputeTexture);
 }
 
-void ComputeShader::Create(const std::string& source)
+void ComputeShader::CreateTexture(uint32_t width, uint32_t height)
 {
+	glGenTextures(1, &m_ComputeTexture);
+	glBindTexture(GL_TEXTURE_2D, m_ComputeTexture);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
+	glBindImageTexture(0, m_ComputeTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
 }
 
 void ComputeShader::Dispatch()
 {
+	glUseProgram(m_ProgramID);
 
+	GLuint groupX = (GLuint)ceil(m_Width / 16.0f);
+	GLuint groupY = (GLuint)ceil(m_Height / 16.0f);
+
+	glDispatchCompute(groupX, groupY, 1);
+
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+}
+
+void ComputeShader::BindTexture()
+{
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_ComputeTexture);
+}
+
+void ComputeShader::Bind()
+{
+	glUseProgram(m_ProgramID);
+}
+
+void ComputeShader::Unbind()
+{
+	glUseProgram(0);
 }

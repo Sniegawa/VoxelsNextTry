@@ -12,7 +12,7 @@ add_subdirectory(Libs/glfw)
 # glm is header-only so only include_directories needed
 include_directories(Libs/glm)
 
-add_executable(Voxels "src/main.cpp" "src/Application.h" "src/Application.cpp" "src/Renderer/Shader.h" "src/Renderer/Shader.cpp" "src/Renderer/Buffers.h" "src/Renderer/Buffers.cpp")
+add_executable(Voxels "src/main.cpp" "src/Application.h" "src/Application.cpp" "src/Renderer/Shader.h" "src/Renderer/Shader.cpp" "src/Renderer/Buffers.h" "src/Renderer/Buffers.cpp" "src/Renderer/Camera.h" "src/Renderer/Camera.cpp" "src/PerlinNoise.hpp")
 
 target_link_libraries (Voxels PUBLIC
 		GLAD
