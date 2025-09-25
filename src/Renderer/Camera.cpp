@@ -17,7 +17,7 @@ void Camera::Setup(GLFWwindow* window)
 {
     m_Data =
     {
-        .cameraPos = glm::vec3(0.0f,0.0f,5.0f),
+        .cameraPos = glm::vec3(-15.0f,0.0f,32.0f),
         .cameraForward = glm::vec3(0.0f,0.0f,1.0f),
         .cameraRight = glm::vec3(1.0f,0.0f,0.0f),
         .cameraUp = glm::vec3(0.0f,1.0f,0.0f),

@@ -34,4 +34,6 @@ private:
 
 	Camera camera;
 	uint32_t cameraUBO = 0;
+
+	GLuint voxelTex3D;
 };
