@@ -1,9 +1,7 @@
 #version 460
 
-
-const vec3 gridPosition = vec3(0);
-const vec3 gridMax = vec3(32,128,32);
-
+uniform vec3 gridPosition;
+const vec3 voxelSize = vec3(0.25);
 uniform ivec3 ChunkSize; // Size of dimentions of the voxel texture
 
 struct Camera
@@ -55,7 +53,7 @@ vec4 getVoxelColor(ivec3 pos) {
 bool AABB(vec3 rayOrigin, vec3 rayDir, out float hitT)
 {
 	vec3 uBoxMin = gridPosition;
-	vec3 uBoxMax = gridPosition + vec3(ChunkSize);
+	vec3 uBoxMax = gridPosition + voxelSize * vec3(ChunkSize);
 	
 	if (rayOrigin.x > uBoxMin.x && rayOrigin.y > uBoxMin.y && rayOrigin.z > uBoxMin.z && rayOrigin.x < uBoxMax.x && rayOrigin.y < uBoxMax.y && rayOrigin.z < uBoxMax.z)
 	{
@@ -87,18 +85,13 @@ bool AABB(vec3 rayOrigin, vec3 rayDir, out float hitT)
 vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
 {
 	vec4 color = vec4(0.0,0.0,0.0,1.0);
-	
-	float dist = length(ro + rd * eT - ro);
 
-	const vec3 vpu =(gridMax - gridPosition)/ vec3(ChunkSize);
+	vec3 gridMax = gridPosition + voxelSize * vec3(ChunkSize);
 
-	const vec3 entry_pos = ((ro + rd * (eT + 0.0001f)) - gridPosition) * vpu;
+	const vec3 entry_pos = ((ro + rd * (eT + 0.0001f)) - gridPosition) / voxelSize;
 	ivec3 pos = ivec3(clamp(floor(entry_pos), vec3(0), vec3(ChunkSize-1)));
 
-	vec3 rayDirVoxel = rd * vpu;
-	ivec3 stepVector = ivec3(sign(rayDirVoxel));
-
-	vec3 voxelSize = (gridMax - gridPosition) / vec3(ChunkSize);
+	ivec3 stepVector = ivec3(sign(rd));
 
 	vec3 nextBoundary;
 	for(int i = 0; i < 3; ++i)
@@ -118,22 +111,7 @@ vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
 
 		if (getVoxel(ivec3(pos)))
 		{
-			if(0 == 1)
-			{
-				// Distance along ray
-				float hitDist = 0.0;
-
-				// Compute distance from camera to voxel center
-				vec3 voxelCenter = (pos + vec3(0.5)) / vpu + gridPosition;
-				hitDist = length(voxelCenter - ro);
-
-				// Scale color based on distance
-				float intensity = 5.0 / (1.0 + hitDist); // prevents division by zero
-				color = vec4(intensity, 0.0, 0.0, 1.0);
-			}
-			else{
-				color = getVoxelColor(ivec3(pos));
-			}
+			color = getVoxelColor(ivec3(pos));
 			break;
 		}
 

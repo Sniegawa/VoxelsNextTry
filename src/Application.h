@@ -35,5 +35,7 @@ private:
 	Camera camera;
 	uint32_t cameraUBO = 0;
 
-	GLuint voxelTex3D;
+	GLuint voxelTex3D = 0;
+
+	glm::vec3 m_ChunkPos = glm::vec3(0);
 };

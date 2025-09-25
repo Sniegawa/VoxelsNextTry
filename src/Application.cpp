@@ -6,6 +6,10 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <imgui.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_glfw.h>
+
 #include <random>
 
 void error_callback(int error, const char* description)
@@ -23,29 +27,50 @@ static uint64_t voxelCount = 0;
 
 App::App()
 {
-	m_data.WindowWidth = 1600;
-	m_data.WindowHeight = 900;
-
-	if (!glfwInit())
 	{
-		printf("Failed to initialize GLFW context");
+		m_data.WindowWidth = 1600;
+		m_data.WindowHeight = 900;
+
+		if (!glfwInit())
+		{
+			printf("Failed to initialize GLFW context");
+		}
+
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+		m_Window = glfwCreateWindow(m_data.WindowWidth, m_data.WindowHeight, "VOXELS", nullptr, nullptr);
+		glfwMakeContextCurrent(m_Window);
+
+		int version = gladLoadGL();
+		if (version == 0)
+		{
+			printf("Failed to initialize OpenGL context\n");
+			return;
+		}
+		glfwSetErrorCallback(error_callback);
+		glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
 	}
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	IMGUI_CHECKVERSION();
 
-	m_Window = glfwCreateWindow(m_data.WindowWidth, m_data.WindowHeight, "VOXELS", nullptr, nullptr);
-	glfwMakeContextCurrent(m_Window);
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO(); (void)io;
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+	ImGui::StyleColorsDark();
 
-	int version = gladLoadGL();
-	if (version == 0)
+	ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
+	ImGui_ImplOpenGL3_Init("#version 460");
+
+
+	ImGuiStyle& style = ImGui::GetStyle();
+	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		printf("Failed to initialize OpenGL context\n");
-		return;
+		style.WindowRounding = 0.0f;
+		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
-	glfwSetErrorCallback(error_callback);
-	glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
 
 	camera.Setup(m_Window);
 
@@ -172,6 +197,12 @@ App::~App()
 
 	glDeleteTextures(1, &voxelTex3D);
 
+	// Cleanup
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
+
+
 	glfwDestroyWindow(m_Window);
 	glfwTerminate();
 }
@@ -191,7 +222,7 @@ void App::Run()
 		glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
 		CameraData& data = camera.getData();
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data);
-
+		glUniform3fv(glGetUniformLocation(computeShader->GetProgramID(), "gridPosition"), 1, glm::value_ptr(m_ChunkPos));
 		glUniform2i(glGetUniformLocation(computeShader->GetProgramID(),"iResolution"), m_data.WindowWidth, m_data.WindowHeight);
 
 		computeShader->Dispatch();
@@ -208,8 +239,32 @@ void App::Run()
 
 		VAO->Unbind();
 
-		glfwSwapBuffers(m_Window);
 		glfwPollEvents();
+
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		// Simple window
+		ImGui::Begin("Hello, ImGui!");
+
+		ImGui::DragFloat3("ChunkPos", glm::value_ptr(m_ChunkPos));
+
+		ImGui::End();
+
+		// Rendering
+		ImGui::Render();
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
+
+		glfwSwapBuffers(m_Window);
 
 		double currentTime = glfwGetTime();
 		frames++;
@@ -225,6 +280,7 @@ void App::Run()
 			frames = 0;
 			lastTime = currentTime;
 		}
+
 
 	}
 }
