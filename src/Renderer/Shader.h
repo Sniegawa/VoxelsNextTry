@@ -1,7 +1,7 @@
 #pragma once
 
 #include <filesystem>
-
+#include <glm/glm.hpp>
 class Shader
 {
 public:
@@ -19,19 +19,22 @@ private:
 class ComputeShader
 {
 public:
-	ComputeShader(const std::filesystem::path& path, uint32_t width, uint32_t height);
+	ComputeShader(const std::filesystem::path& path, const std::filesystem::path& clearShaderPath, uint32_t width, uint32_t height);
 	~ComputeShader();
 
 	void CreateTexture(uint32_t width, uint32_t height);
 	void Bind();
-	void BindTexture();
+	void BindTextures();
+	void ClearTextures();
 	void Unbind();
 	void Dispatch();
 
 	uint32_t GetProgramID() const { return m_ProgramID; }
 private:
 	uint32_t m_ProgramID = 0;
+	uint32_t m_ClearProgramID = 0;
 	uint32_t m_ComputeTexture = 0;
+	uint32_t m_DepthTexture = 0;
 
 	uint32_t m_Width, m_Height;
 };

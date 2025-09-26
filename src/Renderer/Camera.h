@@ -20,7 +20,7 @@ class Camera
 public:
 	Camera();
 	~Camera();
-	void CalculateMatricesFromInputs(GLFWwindow* window);
+	void CalculateMatricesFromInputs(GLFWwindow* window,float dt);
 	void Setup(GLFWwindow* window);
 
 	CameraData& getData() { return m_Data; }
@@ -33,7 +33,7 @@ private:
 	float yaw;    // horizontal angle in degrees
 	float pitch;  // vertical angle in degrees
 	float sensitivity = 0.2f;
-	float speed = 0.001f;
+	float speed = 5.0f;
 
 	bool firstMouse;
 	double lastX, lastY;

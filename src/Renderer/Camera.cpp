@@ -35,7 +35,7 @@ void Camera::Setup(GLFWwindow* window)
 }
 
 void Camera::processKeyboard(GLFWwindow* window, float deltaTime) {
-    float velocity = speed * deltaTime;
+    float velocity = speed * deltaTime * -1;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) m_Data.cameraPos += m_Data.cameraForward * velocity;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) m_Data.cameraPos -= m_Data.cameraForward * velocity;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) m_Data.cameraPos -= m_Data.cameraRight * velocity;
@@ -92,13 +92,9 @@ void Camera::updateVectors(GLFWwindow* window) {
     m_Data.aspect = static_cast<float>(Width) / static_cast<float>(Height);
 }
 
-void Camera::CalculateMatricesFromInputs(GLFWwindow* window)
+void Camera::CalculateMatricesFromInputs(GLFWwindow* window,float dt)
 {
-    static double lastTime = glfwGetTime();
-
-    double currentTime = glfwGetTime();
-    float deltaTime = float(currentTime - lastTime);
-	processKeyboard(window, deltaTime);
+	processKeyboard(window, dt);
 	processMouse(window);
 	updateVectors(window);
 

@@ -1,7 +1,7 @@
 #version 460
 
-uniform vec3 gridPosition;
-const vec3 voxelSize = vec3(0.25);
+uniform vec3 ChunkPosition;
+uniform float voxelSize;
 uniform ivec3 ChunkSize; // Size of dimentions of the voxel texture
 
 struct Camera
@@ -18,9 +18,11 @@ struct Camera
 
 uniform ivec2 iResolution;
 
-layout (local_size_x = 16, local_size_y = 16) in;
+layout (local_size_x = 16, local_size_y = 16,local_size_z = 1) in;
 
 layout (rgba32f, binding = 0) uniform image2D imgOutput;
+
+layout (r32f, binding = 1) uniform image2D depthTex;
 
 layout(binding = 0) uniform usampler3D voxelTex;
 
@@ -52,8 +54,8 @@ vec4 getVoxelColor(ivec3 pos) {
 
 bool AABB(vec3 rayOrigin, vec3 rayDir, out float hitT)
 {
-	vec3 uBoxMin = gridPosition;
-	vec3 uBoxMax = gridPosition + voxelSize * vec3(ChunkSize);
+	vec3 uBoxMin = ChunkPosition;
+	vec3 uBoxMax = ChunkPosition + vec3(voxelSize) * vec3(ChunkSize);
 	
 	if (rayOrigin.x > uBoxMin.x && rayOrigin.y > uBoxMin.y && rayOrigin.z > uBoxMin.z && rayOrigin.x < uBoxMax.x && rayOrigin.y < uBoxMax.y && rayOrigin.z < uBoxMax.z)
 	{
@@ -82,13 +84,13 @@ bool AABB(vec3 rayOrigin, vec3 rayDir, out float hitT)
 	return false;
 }
 
-vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
+vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT, out float LastT)
 {
-	vec4 color = vec4(0.0,0.0,0.0,1.0);
+	vec4 color = vec4(0.0,0.0,0.0,0.0);
 
-	vec3 gridMax = gridPosition + voxelSize * vec3(ChunkSize);
+	vec3 gridMax = ChunkPosition + vec3(voxelSize) * vec3(ChunkSize);
 
-	const vec3 entry_pos = ((ro + rd * (eT + 0.0001f)) - gridPosition) / voxelSize;
+	const vec3 entry_pos = ((ro + rd * (eT + 0.0001f)) - ChunkPosition) / vec3(voxelSize);
 	ivec3 pos = ivec3(clamp(floor(entry_pos), vec3(0), vec3(ChunkSize-1)));
 
 	ivec3 stepVector = ivec3(sign(rd));
@@ -97,15 +99,16 @@ vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
 	for(int i = 0; i < 3; ++i)
 	{
 		if(stepVector[i] > 0)
-			nextBoundary[i] = gridPosition[i] + (pos[i] + 1) * voxelSize[i];
+			nextBoundary[i] = ChunkPosition[i] + (pos[i] + 1) * voxelSize;
 		else
-			nextBoundary[i] = gridPosition[i] + (pos[i]) * voxelSize[i];
+			nextBoundary[i] = ChunkPosition[i] + (pos[i]) * voxelSize;
 	}
 
 	vec3 tmax = (nextBoundary - ro) / rd;
-	vec3 delta = voxelSize / abs(rd);
+	vec3 delta = vec3(voxelSize) / abs(rd);
 
-	const int MAX_STEPS = 100000;
+	const int MAX_STEPS = 1000;
+	float stepsT = 0.0;
 	for (int steps = 0; steps < MAX_STEPS; ++steps)
 	{
 
@@ -121,12 +124,14 @@ vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
 			{
 				pos.x += stepVector.x;
 				if(pos.x < 0 || pos.x >= ChunkSize.x) break;
+				stepsT = tmax.x;
 				tmax.x += delta.x;
 			}
 			else
 			{
 				pos.z += stepVector.z;
 				if (pos.z < 0 || pos.z >= ChunkSize.z) break;
+				stepsT = tmax.z;
 				tmax.z += delta.z;
 			}
 		}
@@ -136,15 +141,18 @@ vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT)
 			{
 				pos.y += stepVector.y;
 				if (pos.y < 0 || pos.y >= ChunkSize.y) break;
+				stepsT = tmax.y;
 				tmax.y += delta.y;
 			}
 			else
 			{
 				pos.z += stepVector.z;
 				if (pos.z < 0 || pos.z >= ChunkSize.z) break;
+				stepsT = tmax.z;
 				tmax.z += delta.z;
 			}
 		}
+		LastT = eT;
 	}
 
 	return color;
@@ -171,13 +179,24 @@ void main()
 
 	vec3 RayDirection = normalize(p.x * Right + p.y * up + Forward);
 
+	float CurrentPixelDepth;
+	CurrentPixelDepth = imageLoad(depthTex,pixel).r;
+
 	float hitT = 0.0;
 	vec4 color = vec4(0);
-	
+	float LastT = -1.0;
 	if(AABB(RayOrigin,RayDirection,hitT))
 	{
-		color = TraverseVoxelGrid(RayOrigin,RayDirection,hitT);
-		//color = VoxelTraverse(RayOrigin,RayDirection,hitT);
+		if(hitT >= CurrentPixelDepth)
+			return;
+		
+		color = TraverseVoxelGrid(RayOrigin,RayDirection,hitT,LastT);
 	}
-	imageStore(imgOutput,pixel,color);
+	if(color != vec4(0))
+		imageStore(imgOutput,pixel,color);
+
+	if(LastT != -1.0 && color.a > 0.0)
+	{
+		imageStore(depthTex,pixel,vec4(LastT));
+	}
 }

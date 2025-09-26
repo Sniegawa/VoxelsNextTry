@@ -7,6 +7,8 @@
 #include <stdexcept>
 #include <iostream>
 
+
+
 std::string LoadShaderFromFile(const std::filesystem::path& path)
 {
 	std::ifstream file(path.string());
@@ -86,8 +88,6 @@ void Shader::Create(const std::filesystem::path& vertex_path, const std::filesys
 	glDeleteShader(fragment);
 }
 
-
-
 void Shader::Bind()
 {
 	glUseProgram(m_ProgramID);
@@ -98,48 +98,93 @@ void Shader::Unbind()
 	glUseProgram(0);
 }
 
-ComputeShader::ComputeShader(const std::filesystem::path& path,uint32_t width, uint32_t height)
-	: m_Width(width),m_Height(height)
+ComputeShader::ComputeShader(const std::filesystem::path& path, const std::filesystem::path& clearShaderPath, uint32_t width, uint32_t height)
+	: m_Width(width), m_Height(height)
 {
-	std::string content = LoadShaderFromFile(path);
-
-	const char* content_source = content.c_str();
-
-	uint32_t computeID = glCreateShader(GL_COMPUTE_SHADER);
-
-	glShaderSource(computeID, 1, &content_source, nullptr);
-	glCompileShader(computeID);
-
-	GLint success;
-	glGetShaderiv(computeID, GL_COMPILE_STATUS, &success);
-	if (!success)
 	{
-		char infoLog[1024];
-		glGetShaderInfoLog(computeID, 1024, nullptr, infoLog);
-		std::cerr << "Compute Shader Compilation Error:\n" << infoLog << "\n";
+		std::string content = LoadShaderFromFile(path);
+
+		const char* content_source = content.c_str();
+
+		uint32_t computeID = glCreateShader(GL_COMPUTE_SHADER);
+
+		glShaderSource(computeID, 1, &content_source, nullptr);
+		glCompileShader(computeID);
+
+		GLint success;
+		glGetShaderiv(computeID, GL_COMPILE_STATUS, &success);
+		if (!success)
+		{
+			char infoLog[1024];
+			glGetShaderInfoLog(computeID, 1024, nullptr, infoLog);
+			std::cerr << "Compute Shader Compilation Error:\n" << infoLog << "\n";
+		}
+
+		m_ProgramID = glCreateProgram();
+		glAttachShader(m_ProgramID, computeID);
+		glLinkProgram(m_ProgramID);
+
+		glGetProgramiv(m_ProgramID, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			char infoLog[1024];
+			glGetProgramInfoLog(m_ProgramID, 1024, nullptr, infoLog);
+			std::cerr << "Compute Shader Linking Error:\n" << infoLog << "\n";
+		}
+
+		glDeleteShader(computeID);
 	}
 
-	m_ProgramID = glCreateProgram();
-	glAttachShader(m_ProgramID, computeID);
-	glLinkProgram(m_ProgramID);
-
-	glGetProgramiv(m_ProgramID, GL_LINK_STATUS, &success);
-	if (!success)
 	{
-		char infoLog[1024];
-		glGetProgramInfoLog(m_ProgramID, 1024, nullptr, infoLog);
-		std::cerr << "Compute Shader Linking Error:\n" << infoLog << "\n";
+		std::string content = LoadShaderFromFile(clearShaderPath);
+
+		const char* content_source = content.c_str();
+
+		uint32_t computeID = glCreateShader(GL_COMPUTE_SHADER);
+
+		glShaderSource(computeID, 1, &content_source, nullptr);
+		glCompileShader(computeID);
+
+		if (content.empty()) {
+			std::cerr << "Error: Clear shader file is empty or not found: " << clearShaderPath << "\n";
+			return;
+		}
+
+		GLint success;
+		glGetShaderiv(computeID, GL_COMPILE_STATUS, &success);
+		if (!success)
+		{
+			char infoLog[1024];
+			glGetShaderInfoLog(computeID, 1024, nullptr, infoLog);
+			std::cerr << "Compute Shader Compilation Error:\n" << infoLog << "\n";
+		}
+
+		m_ClearProgramID = glCreateProgram();
+		glAttachShader(m_ClearProgramID, computeID);
+		glLinkProgram(m_ClearProgramID);
+
+		glGetProgramiv(m_ClearProgramID, GL_LINK_STATUS, &success);
+		if (!success)
+		{
+			char infoLog[1024];
+			glGetProgramInfoLog(m_ClearProgramID, 1024, nullptr, infoLog);
+			std::cerr << "Compute Shader Linking Error:\n" << infoLog << "\n";
+		}
+
+		glDeleteShader(computeID);
 	}
 
-	glDeleteShader(computeID);
 
 	CreateTexture(width, height);
+
+
 }
 
 ComputeShader::~ComputeShader()
 {
 	glDeleteProgram(m_ProgramID);
 	glDeleteTextures(1,&m_ComputeTexture);
+	glDeleteTextures(1, &m_DepthTexture);
 }
 
 void ComputeShader::CreateTexture(uint32_t width, uint32_t height)
@@ -149,6 +194,25 @@ void ComputeShader::CreateTexture(uint32_t width, uint32_t height)
 	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
 	glBindImageTexture(0, m_ComputeTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
+	glGenTextures(1, &m_DepthTexture);
+	glBindTexture(GL_TEXTURE_2D, m_DepthTexture);
+	glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32F, width, height);
+	glBindImageTexture(1, m_DepthTexture, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32F);
+
+	std::vector<float> depthInit(width * height, 1e30f);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED, GL_FLOAT, depthInit.data());
+}
+
+void ComputeShader::ClearTextures()
+{
+	glUseProgram(m_ClearProgramID);
+
+	GLuint groupX = (GLuint)ceil(m_Width / 16.0f);
+	GLuint groupY = (GLuint)ceil(m_Height / 16.0f);
+	glUniform2i(glGetUniformLocation(m_ClearProgramID, "iResolution"), m_Width, m_Height);
+	glDispatchCompute(groupX, groupY, 1);
+
+	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
 void ComputeShader::Dispatch()
@@ -163,10 +227,12 @@ void ComputeShader::Dispatch()
 	glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
 }
 
-void ComputeShader::BindTexture()
+void ComputeShader::BindTextures()
 {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, m_ComputeTexture);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, m_DepthTexture);
 }
 
 void ComputeShader::Bind()

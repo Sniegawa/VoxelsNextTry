@@ -9,6 +9,7 @@
 #include "Renderer/Shader.h"
 #include "Renderer/Buffers.h"
 #include "Renderer/Camera.h"
+#include "Renderer/Chunk.h"
 
 struct AppData
 {
@@ -35,7 +36,8 @@ private:
 	Camera camera;
 	uint32_t cameraUBO = 0;
 
-	GLuint voxelTex3D = 0;
+	std::unique_ptr<Chunk> testChunk;
+	std::unique_ptr<Chunk> anotherTestChunk;
 
-	glm::vec3 m_ChunkPos = glm::vec3(0);
+	std::vector<std::unique_ptr<Chunk>> Chunks;
 };

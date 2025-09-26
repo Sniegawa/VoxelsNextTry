@@ -35,7 +35,7 @@ ${IMGUI_SOURCES}
 "src/Renderer/Buffers.cpp"
 "src/Renderer/Camera.h"
 "src/Renderer/Camera.cpp"
-"src/PerlinNoise.hpp")
+"src/PerlinNoise.hpp" "src/Renderer/Chunk.h" "src/Renderer/Chunk.cpp")
 
 target_link_libraries (Voxels PUBLIC
 		GLAD
