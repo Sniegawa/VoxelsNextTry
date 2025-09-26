@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
 
+#include "Chunk.h"
+
 struct CameraData
 {
 	glm::vec3 cameraPos;
@@ -20,20 +22,22 @@ class Camera
 public:
 	Camera();
 	~Camera();
-	void CalculateMatricesFromInputs(GLFWwindow* window,float dt);
+	void CalculateVectorsFromInputs(GLFWwindow* window,float dt);
 	void Setup(GLFWwindow* window);
 
 	CameraData& getData() { return m_Data; }
+
 private:
 	void processKeyboard(GLFWwindow* window, float deltaTime);
 	void processMouse(GLFWwindow* window);
 	void updateVectors(GLFWwindow* window);
+
 private:
 	CameraData m_Data;
 	float yaw;    // horizontal angle in degrees
 	float pitch;  // vertical angle in degrees
 	float sensitivity = 0.2f;
-	float speed = 5.0f;
+	float speed = 15.0f;
 
 	bool firstMouse;
 	double lastX, lastY;

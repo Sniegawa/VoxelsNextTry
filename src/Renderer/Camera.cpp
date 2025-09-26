@@ -35,7 +35,7 @@ void Camera::Setup(GLFWwindow* window)
 }
 
 void Camera::processKeyboard(GLFWwindow* window, float deltaTime) {
-    float velocity = speed * deltaTime * -1;
+    float velocity = speed * deltaTime;
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) m_Data.cameraPos += m_Data.cameraForward * velocity;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) m_Data.cameraPos -= m_Data.cameraForward * velocity;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) m_Data.cameraPos -= m_Data.cameraRight * velocity;
@@ -46,10 +46,10 @@ void Camera::processKeyboard(GLFWwindow* window, float deltaTime) {
 
 void Camera::processMouse(GLFWwindow* window) {
 
-    if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_PRESS)
+  //  if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) != GLFW_PRESS)
     {
-        firstMouse = true; // reset on release to avoid jump
-        return;
+      //  firstMouse = true; // reset on release to avoid jump
+      //  return;
     }
 
     double xpos, ypos;
@@ -92,7 +92,7 @@ void Camera::updateVectors(GLFWwindow* window) {
     m_Data.aspect = static_cast<float>(Width) / static_cast<float>(Height);
 }
 
-void Camera::CalculateMatricesFromInputs(GLFWwindow* window,float dt)
+void Camera::CalculateVectorsFromInputs(GLFWwindow* window,float dt)
 {
 	processKeyboard(window, dt);
 	processMouse(window);

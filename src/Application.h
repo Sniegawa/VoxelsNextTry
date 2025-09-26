@@ -10,6 +10,8 @@
 #include "Renderer/Buffers.h"
 #include "Renderer/Camera.h"
 #include "Renderer/Chunk.h"
+#include "Renderer/World.h"
+
 
 struct AppData
 {
@@ -23,6 +25,9 @@ public:
 	App();
 	~App();
 	void Run();
+
+private:
+	void Update(float dt);
 private:
 	GLFWwindow* m_Window;
 	AppData m_data;
@@ -36,8 +41,5 @@ private:
 	Camera camera;
 	uint32_t cameraUBO = 0;
 
-	std::unique_ptr<Chunk> testChunk;
-	std::unique_ptr<Chunk> anotherTestChunk;
-
-	std::vector<std::unique_ptr<Chunk>> Chunks;
+	World world;
 };

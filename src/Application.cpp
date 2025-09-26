@@ -11,6 +11,9 @@
 #include <imgui_impl_glfw.h>
 
 
+static uint64_t voxelCount = 0;
+static int ModifyRadius = 5;
+static float RadiusTreshold = 0.0f;
 
 void error_callback(int error, const char* description)
 {
@@ -23,7 +26,25 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 	// height will be significantly larger than specified on retina displays.
 	glViewport(0, 0, width, height);
 }
-static uint64_t voxelCount = 0;
+
+
+void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+{
+	RadiusTreshold += yoffset;
+	printf("%f\n", RadiusTreshold);
+	if (RadiusTreshold >= 1.0f)
+	{
+		if(ModifyRadius <= 20)
+		ModifyRadius++;
+		RadiusTreshold -= 1.0f;
+	}
+	else if (RadiusTreshold <= -1.0f)
+	{
+		if(ModifyRadius >= 2)
+			ModifyRadius--;
+		RadiusTreshold += 1.0f;
+	}
+}
 
 App::App()
 {
@@ -49,9 +70,16 @@ App::App()
 			printf("Failed to initialize OpenGL context\n");
 			return;
 		}
+		glfwSetInputMode(m_Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		if (glfwRawMouseMotionSupported())
+			glfwSetInputMode(m_Window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
+
+
 		glfwSetErrorCallback(error_callback);
 		glfwSetFramebufferSizeCallback(m_Window, framebuffer_size_callback);
+		glfwSetScrollCallback(m_Window, scrollCallback);
 	}
+
 
 	IMGUI_CHECKVERSION();
 
@@ -103,16 +131,23 @@ App::App()
 
 	const int ChunksRowSize = 10;
 	const int ChunksColumnSize = 10;
-	Chunks.resize(ChunksRowSize * ChunksColumnSize);
 	for (int x = 0; x < ChunksRowSize; ++x)
 	{
 		for (int z = 0; z < ChunksColumnSize; ++z)
 		{
-			Chunks[x + z * ChunksRowSize] = std::make_unique<Chunk>(glm::ivec3(x, 0, z));
-			Chunks[x + z * ChunksRowSize]->Create();
-			voxelCount += Chunks[x + z * ChunksRowSize]->getDebugVoxelCount();
+			world.CreateChunk(glm::ivec3(x, 0, z));
 		}
 	}
+
+	Chunk* chunk = world.GetChunk({ 0,0,0 });
+	chunk->SetVoxel({ 0,0,0 }, 0);
+	chunk->SetVoxel({ 0,0,1 }, 0);
+	chunk->SetVoxel({ 0,0,2 }, 0);
+	chunk->SetVoxel({ 0,0,3 }, 0);
+	chunk->SetVoxel({ 0,0,4 }, 0);
+	chunk->SetVoxel({ 0,0,5 }, 0);
+	chunk->SetVoxel({ 0,0,6 }, 0);
+
 
 	this->Run();
 }
@@ -131,6 +166,28 @@ App::~App()
 	glfwDestroyWindow(m_Window);
 	glfwTerminate();
 }
+float deleteCd = 0.0f;
+float addCd = 0.0f;
+void App::Update(float dt)
+{
+	camera.CalculateVectorsFromInputs(m_Window, dt);
+	CameraData& data = camera.getData();
+	//TODO fix adding voxels replaces them instead of adding
+	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && deleteCd <= 0.0f)
+	{
+		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Remove);
+		deleteCd = 0.125f;
+
+	}
+	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && addCd <= 0.0f)
+	{
+		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Add);
+		addCd = 0.125f;
+
+	}
+	deleteCd -= dt;
+	addCd -= dt;
+}
 
 void App::Run()
 {
@@ -140,13 +197,15 @@ void App::Run()
 	int frames = 0;
 	while (!glfwWindowShouldClose(m_Window))
 	{
+		float currentDT = glfwGetTime();
+		float dt = currentDT - lastDT;
+		lastDT = currentDT;
+		Update(dt);
+
+
 		glClearColor(0.2f, 0.2f, 0.6f, 1.0f);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 		computeShader->ClearTextures();
-		float currentDT = glfwGetTime();
-		float dt = lastDT - currentDT;
-		lastDT = currentDT;
-		camera.CalculateMatricesFromInputs(m_Window,dt);
 		computeShader->Bind();
 		computeShader->BindTextures();
 
@@ -156,13 +215,7 @@ void App::Run()
 
 		glUniform2i(glGetUniformLocation(computeShader->GetProgramID(),"iResolution"), m_data.WindowWidth, m_data.WindowHeight);
 
-		for (const auto& chunk : Chunks)
-		{
-			chunk->Bind(computeShader);
-			computeShader->Dispatch();
-			
-		}
-
+		voxelCount = world.Render(computeShader);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		
@@ -214,6 +267,8 @@ void App::Run()
 			lastTime = currentTime;
 		}
 
+		if (glfwGetKey(m_Window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+			break;
 		
 	}
 }

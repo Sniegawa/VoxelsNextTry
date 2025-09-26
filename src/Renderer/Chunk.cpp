@@ -17,6 +17,28 @@ Chunk::~Chunk()
 	glDeleteTextures(1, &m_TextureID);
 }
 
+void Chunk::CreateTexture()
+{
+	if (m_Dirty)
+	{
+		glDeleteTextures(1, &m_TextureID);
+	}
+
+	glGenTextures(1, &m_TextureID);
+	glBindTexture(GL_TEXTURE_3D, m_TextureID);
+
+	glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, m_Data.data());
+
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
+	glBindTexture(GL_TEXTURE_3D, 0);
+
+	m_Dirty = false;
+}
+
 void Chunk::Create()
 {
 	m_Data.fill(0u);
@@ -36,7 +58,8 @@ void Chunk::Create()
 	{
 		for (int z = 0; z < CHUNK_DEPTH; ++z)
 		{
-			const double noise = perlin.octave2D_01(( (x+(m_ChunkPosition.x*CHUNK_WIDTH)) * 0.0015), ((z + (m_ChunkPosition.z * CHUNK_DEPTH)) * 0.0015), 8);
+			const float noise_scale = 0.001;
+			const double noise = perlin.octave2D_01(( (x+(m_ChunkPosition.x*CHUNK_WIDTH)) * noise_scale), ((z + (m_ChunkPosition.z * CHUNK_DEPTH)) * noise_scale), 8);
 			int maxY = int(CHUNK_HEIGHT * noise);
 			for (int y = 0; y < maxY; ++y)
 			{
@@ -49,10 +72,9 @@ void Chunk::Create()
 				}
 				else if (y > maxY - 200)
 				{
-					// Normalize x to [0,1]
 					float chance = pow(float(maxY - y) / 200.0f, 2.6f);
 
-					float r = dist(rng);      // random number 0..1
+					float r = dist(rng);
 					m_Data[index(x, y, z)] = (r < chance) ? (dist(rng) >= 0.02f ? 3 : 4) : (dist(rng) >= 0.5f ? 1 : 2);
 				}
 				else
@@ -67,28 +89,13 @@ void Chunk::Create()
 		}
 	}
 
-	if (m_Dirty)
-	{
-		glDeleteTextures(1, &m_TextureID);
-	}
-
-	glGenTextures(1, &m_TextureID);
-	glBindTexture(GL_TEXTURE_3D, m_TextureID);
-
-	glTexImage3D(GL_TEXTURE_3D, 0, GL_R8UI, CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH, 0, GL_RED_INTEGER, GL_UNSIGNED_BYTE, m_Data.data());
-
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_REPEAT);
-	glBindTexture(GL_TEXTURE_3D, 0);
+	CreateTexture();
 }
 
 void Chunk::Bind(ComputeShader* cs)
 {
 	if (m_Dirty)
-		Create();
+		CreateTexture();
 	//glUseProgram(cs->GetProgramID());
 
 	glActiveTexture(GL_TEXTURE2);
