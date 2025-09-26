@@ -105,20 +105,19 @@ bool World::raycastAndModify(
 		if (IsSolid(voxel)) {
 			std::mt19937 rng(std::random_device{}());
 			std::uniform_real_distribution<float> dist(0.0f, 1.0f);
-			// If radius > 0, apply modification to a cube/sphere around hit
+			// If radius > 0, apply modification to a sphere around hit
 			if (radius > 1) {
-				int rVoxels = radius;//static_cast<int>(std::ceil(radius / VOXEL_SIZE));
+				int rVoxels = radius;
 				for (int x = -rVoxels; x <= rVoxels; ++x) {
 					for (int y = -rVoxels; y <= rVoxels; ++y) {
 						for (int z = -rVoxels; z <= rVoxels; ++z) {
 							glm::ivec3 offset(x, y, z);
 							glm::ivec3 target = voxel + offset;
 
-							// spherical check
 							if (glm::length(glm::vec3(offset)) <= rVoxels) {
 								if (action == VoxelAction::Remove)
 									ClearVoxel(target);
-								else if (action == VoxelAction::Add)
+								else if (action == VoxelAction::Add && !IsSolid(target))
 								{
 									if (dist(rng) >= 0.5f)
 										SetVoxel(target, 1);
@@ -137,9 +136,9 @@ bool World::raycastAndModify(
 				else if (action == VoxelAction::Add)
 				{
 					if (dist(rng) >= 0.5f)
-						SetVoxel(voxel, 1);
+						SetVoxel(prev, 1);
 					else
-						SetVoxel(voxel, 2);
+						SetVoxel(prev, 2);
 				}
 			}
 			return true;

@@ -172,7 +172,7 @@ void App::Update(float dt)
 {
 	camera.CalculateVectorsFromInputs(m_Window, dt);
 	CameraData& data = camera.getData();
-	//TODO fix adding voxels replaces them instead of adding
+	
 	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && deleteCd <= 0.0f)
 	{
 		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Remove);
