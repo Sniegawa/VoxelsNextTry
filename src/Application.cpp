@@ -12,7 +12,9 @@
 
 
 static uint64_t voxelCount = 0;
+
 static int ModifyRadius = 5;
+static int SelectedVoxelType = 1;
 static float RadiusTreshold = 0.0f;
 
 void error_callback(int error, const char* description)
@@ -181,10 +183,16 @@ void App::Update(float dt)
 	}
 	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && addCd <= 0.0f)
 	{
-		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Add);
+		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Add,SelectedVoxelType);
 		addCd = 0.125f;
 
 	}
+	if (glfwGetKey(m_Window, GLFW_KEY_1) == GLFW_PRESS)
+		SelectedVoxelType = 1;
+	else if (glfwGetKey(m_Window, GLFW_KEY_2) == GLFW_PRESS)
+		SelectedVoxelType = 3;
+	else if (glfwGetKey(m_Window, GLFW_KEY_3) == GLFW_PRESS)
+		SelectedVoxelType = 5;
 	deleteCd -= dt;
 	addCd -= dt;
 }

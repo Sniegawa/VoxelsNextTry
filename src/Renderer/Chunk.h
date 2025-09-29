@@ -42,7 +42,7 @@ public:
 	{
 		At(x, y, z) = value;
 		m_Dirty = true;
-
+		
 		if (value == 0)
 			voxelsCount--;
 		else

@@ -35,6 +35,7 @@ public:
 		float maxDistance,
 		int radius,
 		VoxelAction action,
+		int SelectedVoxel = 1,
 		int maxSteps = 512
 	);
 

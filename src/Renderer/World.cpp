@@ -14,6 +14,8 @@ bool World::IsSolid(glm::ivec3 worldPos) const
 
 void World::SetVoxel(glm::ivec3 worldPos, uint8_t value)
 {
+	if (worldPos.y >= CHUNK_HEIGHT || worldPos.y < 0)
+		return;
 	glm::ivec3 chunkCoords = WorldToChunkCoords(worldPos);
 	glm::ivec3 localCoords = WorldToLocalCoords(worldPos);
 
@@ -65,6 +67,7 @@ bool World::raycastAndModify(
 	float maxDistance,
 	int radius,
 	VoxelAction action,
+	int SelectedVoxel,
 	int maxSteps
 )
 {
@@ -120,9 +123,9 @@ bool World::raycastAndModify(
 								else if (action == VoxelAction::Add && !IsSolid(target))
 								{
 									if (dist(rng) >= 0.5f)
-										SetVoxel(target, 1);
+										SetVoxel(target, SelectedVoxel);
 									else
-										SetVoxel(target, 2);
+										SetVoxel(target, SelectedVoxel + 1);
 									
 								}
 							}
@@ -136,9 +139,9 @@ bool World::raycastAndModify(
 				else if (action == VoxelAction::Add)
 				{
 					if (dist(rng) >= 0.5f)
-						SetVoxel(prev, 1);
+						SetVoxel(prev, SelectedVoxel);
 					else
-						SetVoxel(prev, 2);
+						SetVoxel(prev, SelectedVoxel + 1);
 				}
 			}
 			return true;
