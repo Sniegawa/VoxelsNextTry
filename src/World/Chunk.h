@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <array>
 
-#include "Shader.h"
+#include "../Renderer/Shader.h"
 
 #define CHUNK_WIDTH 128
 #define CHUNK_HEIGHT 512
@@ -74,10 +74,13 @@ private:
 
 private:
 	std::array<uint8_t, CHUNK_WIDTH * CHUNK_HEIGHT * CHUNK_DEPTH> m_Data;
+	std::array<uint32_t, CHUNK_WIDTH* CHUNK_DEPTH> m_Heightmap;
 	uint32_t m_TextureID;
 	glm::ivec3 m_ChunkPosition;
 	bool m_Dirty = false; //Whether texture needs updating
 
 	//DebugData
 	uint32_t voxelsCount;
+
+	friend class World;
 };

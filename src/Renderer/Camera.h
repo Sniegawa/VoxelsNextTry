@@ -3,8 +3,6 @@
 #include <glm/glm.hpp>
 #include <GLFW/glfw3.h>
 
-#include "Chunk.h"
-
 struct CameraData
 {
 	glm::vec3 cameraPos;

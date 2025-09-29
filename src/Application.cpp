@@ -137,19 +137,9 @@ App::App()
 	{
 		for (int z = 0; z < ChunksColumnSize; ++z)
 		{
-			world.CreateChunk(glm::ivec3(x, 0, z));
+			world.GetOrCreateChunk(glm::ivec3(x, 0, z));
 		}
 	}
-
-	Chunk* chunk = world.GetChunk({ 0,0,0 });
-	chunk->SetVoxel({ 0,0,0 }, 0);
-	chunk->SetVoxel({ 0,0,1 }, 0);
-	chunk->SetVoxel({ 0,0,2 }, 0);
-	chunk->SetVoxel({ 0,0,3 }, 0);
-	chunk->SetVoxel({ 0,0,4 }, 0);
-	chunk->SetVoxel({ 0,0,5 }, 0);
-	chunk->SetVoxel({ 0,0,6 }, 0);
-
 
 	this->Run();
 }
@@ -177,13 +167,13 @@ void App::Update(float dt)
 	
 	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS && deleteCd <= 0.0f)
 	{
-		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Remove);
+		world.raycastAndModify(data.cameraPos, data.cameraForward, 1250, ModifyRadius, VoxelAction::Remove);
 		deleteCd = 0.125f;
 
 	}
 	if (glfwGetMouseButton(m_Window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS && addCd <= 0.0f)
 	{
-		world.raycastAndModify(data.cameraPos, data.cameraForward, 250, ModifyRadius, VoxelAction::Add,SelectedVoxelType);
+		world.raycastAndModify(data.cameraPos, data.cameraForward, 1250, ModifyRadius, VoxelAction::Add,SelectedVoxelType);
 		addCd = 0.125f;
 
 	}

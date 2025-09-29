@@ -2,8 +2,8 @@
 #include <unordered_map>
 #include <glm/glm.hpp>
 #include "Chunk.h"
-#include "Shader.h"
-
+#include "Decoration.h"
+#include "../Renderer/Shader.h"
 
 struct ivec3Hash {
 	std::size_t operator()(const glm::ivec3& v) const noexcept {
@@ -18,7 +18,8 @@ enum class VoxelAction {
 
 class World {
 public:
-	World() {}
+	World();
+	~World() = default;
 
 	bool IsSolid(glm::ivec3 worldPos) const;
 	void SetVoxel(glm::ivec3 worldPos, uint8_t value = 1);
@@ -61,7 +62,23 @@ private:
 			(worldPos.z % CHUNK_DEPTH + CHUNK_DEPTH) % CHUNK_DEPTH
 		);
 	}
+
+	glm::ivec3 ChunkToWorldCoords(const glm::ivec3& chunkCords, const glm::ivec3& chunkPos)
+	{
+		return glm::ivec3(
+			(chunkPos.x * CHUNK_WIDTH) + chunkCords.x,
+			(chunkPos.y * CHUNK_HEIGHT) + chunkCords.y,
+			(chunkPos.z * CHUNK_DEPTH) + chunkCords.z
+		);
+	}
+
+	void GenerateChunkDecorations(Chunk* chunk);
+
+	void PlaceDecoration(glm::ivec3 Position,int DecorationID);
+
 private:
 	const glm::ivec3 m_ChunkSize = glm::ivec3(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH);
 	std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>, ivec3Hash> m_Chunks;
+
+	std::vector<Decoration> m_Decorations;
 };

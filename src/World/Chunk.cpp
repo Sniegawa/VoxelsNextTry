@@ -19,10 +19,7 @@ Chunk::~Chunk()
 
 void Chunk::CreateTexture()
 {
-	if (m_Dirty)
-	{
-		glDeleteTextures(1, &m_TextureID);
-	}
+	glDeleteTextures(1, &m_TextureID);
 
 	glGenTextures(1, &m_TextureID);
 	glBindTexture(GL_TEXTURE_3D, m_TextureID);
@@ -61,6 +58,7 @@ void Chunk::Create()
 			const float noise_scale = 0.001;
 			const double noise = perlin.octave2D_01(( (x+(m_ChunkPosition.x*CHUNK_WIDTH)) * noise_scale), ((z + (m_ChunkPosition.z * CHUNK_DEPTH)) * noise_scale), 8);
 			int maxY = int(CHUNK_HEIGHT * noise);
+			m_Heightmap[x + CHUNK_WIDTH * z] = maxY;
 			for (int y = 0; y < maxY; ++y)
 			{
 				if (y >= maxY - 5)

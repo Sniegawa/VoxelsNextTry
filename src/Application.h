@@ -9,8 +9,8 @@
 #include "Renderer/Shader.h"
 #include "Renderer/Buffers.h"
 #include "Renderer/Camera.h"
-#include "Renderer/Chunk.h"
-#include "Renderer/World.h"
+#include "World/Chunk.h"
+#include "World/World.h"
 
 
 struct AppData
