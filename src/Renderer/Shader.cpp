@@ -194,6 +194,10 @@ void ComputeShader::CreateTexture(uint32_t width, uint32_t height)
 	glTexStorage2D(GL_TEXTURE_2D, 1, GL_RGBA32F, width, height);
 	glBindImageTexture(0, m_ComputeTexture, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+
 	glGenTextures(1, &m_DepthTexture);
 	glBindTexture(GL_TEXTURE_2D, m_DepthTexture);
 	glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32F, width, height);
@@ -201,6 +205,11 @@ void ComputeShader::CreateTexture(uint32_t width, uint32_t height)
 
 	std::vector<float> depthInit(width * height, 1e30f);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RED, GL_FLOAT, depthInit.data());
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void ComputeShader::ClearTextures()

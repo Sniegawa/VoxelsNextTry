@@ -7,10 +7,10 @@
 
 #include "../Renderer/Shader.h"
 
-#define CHUNK_WIDTH 128
+#define CHUNK_WIDTH 256
 #define CHUNK_HEIGHT 512
-#define CHUNK_DEPTH 128
-#define VOXEL_SIZE 0.125f
+#define CHUNK_DEPTH 256
+#define VOXEL_SIZE 0.25f
 
 class Chunk
 {

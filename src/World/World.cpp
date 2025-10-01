@@ -40,14 +40,12 @@ World::World()
 	// Lambda to compute 1D index
 	auto idx = [&](int x, int y, int z) { return x + y * TREE_WIDTH + z * TREE_WIDTH * TREE_HEIGHT; };
 
-	// Trunk (1󪻕) in the center bottom
 	int centerX = TREE_WIDTH / 2;
 	int centerZ = TREE_DEPTH / 2;
 	for (int y = 0; y < 5; ++y) {
 		tree2[idx(centerX, y, centerZ)] = 1; // bark
 	}
 
-	// Leaves (cube canopy) from y=5 to y=9
 	for (int y = 5; y < TREE_HEIGHT; ++y) {
 		for (int z = 1; z < TREE_DEPTH - 1; ++z) {
 			for (int x = 1; x < TREE_WIDTH - 1; ++x) {
@@ -107,7 +105,22 @@ Chunk& World::CreateChunk(const glm::ivec3& chunkPos) {
 	chunk->Create(); // alloc GPU texture etc.
 	Chunk* ptr = chunk.get();
 	m_Chunks.emplace(chunkPos, std::move(chunk));
-	printf("Generating chunk number : %i position %i,%i,%i\n", m_Chunks.size(),chunkPos.x,chunkPos.y,chunkPos.z);
+	
+	printf("Generating chunk number : %i position %i,%i,%i\n", static_cast<int>(m_Chunks.size()),chunkPos.x,chunkPos.y,chunkPos.z);
+
+	for (auto it = m_DefferedVoxels.begin(); it!= m_DefferedVoxels.end();)
+	{
+		if (it->chunkPos == chunkPos)
+		{
+			SetVoxel(it->worldPos, it->voxelType);
+			it = m_DefferedVoxels.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+	printf("Deffered voxel count : %i\n", static_cast<int>(m_DefferedVoxels.size()));
 	GenerateChunkDecorations(GetChunk(chunkPos));
 	return *ptr;
 }
@@ -279,28 +292,11 @@ void World::GenerateChunkDecorations(Chunk* chunk)
 	}
 }
 
-bool FitsInChunk(const glm::ivec3& pos, const glm::ivec3& decSize)
-{
-	if (pos.x < 0 || pos.y < 0 || pos.z < 0) return false;
-	if (pos.x + decSize.x > CHUNK_WIDTH)  return false;
-	if (pos.y + decSize.y > CHUNK_HEIGHT) return false;
-	if (pos.z + decSize.z > CHUNK_DEPTH) return false;
-	return true;
-}
-
-
-void World::PlaceDecoration(glm::ivec3 Position, int DecorationID)
+void World::PlaceDecoration(glm::ivec3 WorldPosition, int DecorationID)
 {
 	const Decoration& dec = m_Decorations[DecorationID];
 
 	const glm::ivec3& decSize = dec.Size;
-
-	glm::ivec3 chunkPos = WorldToChunkCoords(Position + decSize);
-
-	if (m_Chunks.find(chunkPos) == m_Chunks.end())
-		return;
-
-
 
 	for (int x = 0; x < decSize.x; ++x)
 	{
@@ -308,8 +304,20 @@ void World::PlaceDecoration(glm::ivec3 Position, int DecorationID)
 		{
 			for (int z = 0; z < decSize.z; ++z)
 			{
-				if (dec.Data[x + y * decSize.x + z * decSize.x * decSize.y])
-					SetVoxel(Position + glm::ivec3(x, y, z), dec.Data[x + y * decSize.x + z * decSize.x * decSize.y]);
+				uint8_t data = dec.Data[x + y * decSize.x + z * decSize.x * decSize.y];
+				if (data != 0)
+				{
+					glm::ivec3 BlockWorldPos = WorldPosition + glm::ivec3(x, y, z);
+					glm::ivec3 BlockChunkPos = WorldToChunkCoords(BlockWorldPos);
+					if (m_Chunks.find(BlockChunkPos) == m_Chunks.end())
+					{
+						m_DefferedVoxels.push_back({BlockWorldPos,BlockChunkPos,data});
+					}
+					else
+					{
+						SetVoxel(BlockWorldPos, data);
+					}
+				}
 			}
 		}
 	}

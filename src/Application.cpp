@@ -10,6 +10,7 @@
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_glfw.h>
 
+#define OUTPUT_IMAGE_SCALE 1
 
 static uint64_t voxelCount = 0;
 
@@ -124,15 +125,15 @@ App::App()
 	EBO = new ElementBuffer(quadIndices, sizeof(quadIndices));
 	VAO->Unbind();
 
-	computeShader = new ComputeShader(std::filesystem::absolute("Shaders/computeVoxelTraversal.glsl"), std::filesystem::absolute("Shaders/computeClearTextures.glsl"), m_data.WindowWidth, m_data.WindowHeight);
+	computeShader = new ComputeShader(std::filesystem::absolute("Shaders/computeVoxelTraversal.glsl"), std::filesystem::absolute("Shaders/computeClearTextures.glsl"), m_data.WindowWidth / OUTPUT_IMAGE_SCALE, m_data.WindowHeight/ OUTPUT_IMAGE_SCALE);
 
 	glGenBuffers(1, &cameraUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, cameraUBO);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(CameraData), nullptr, GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, cameraUBO);
 
-	const int ChunksRowSize = 10;
-	const int ChunksColumnSize = 10;
+	const int ChunksRowSize = 5;
+	const int ChunksColumnSize = 5;
 	for (int x = 0; x < ChunksRowSize; ++x)
 	{
 		for (int z = 0; z < ChunksColumnSize; ++z)
@@ -158,6 +159,7 @@ App::~App()
 	glfwDestroyWindow(m_Window);
 	glfwTerminate();
 }
+
 float deleteCd = 0.0f;
 float addCd = 0.0f;
 void App::Update(float dt)
@@ -211,7 +213,7 @@ void App::Run()
 		CameraData& data = camera.getData();
 		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(CameraData), &data);
 
-		glUniform2i(glGetUniformLocation(computeShader->GetProgramID(),"iResolution"), m_data.WindowWidth, m_data.WindowHeight);
+		glUniform2i(glGetUniformLocation(computeShader->GetProgramID(), "iResolution"), m_data.WindowWidth / OUTPUT_IMAGE_SCALE, m_data.WindowHeight / OUTPUT_IMAGE_SCALE);
 
 		voxelCount = world.Render(computeShader);
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);

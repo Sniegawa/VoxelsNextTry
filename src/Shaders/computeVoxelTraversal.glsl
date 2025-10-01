@@ -123,7 +123,7 @@ vec4 TraverseVoxelGrid(vec3 ro, vec3 rd,float eT, out float LastT)
 
 	int lastDir = -1; // X - 0, Y - 2, Z - 4
 
-	const int MAX_STEPS = 1000;
+	const int MAX_STEPS = 5000;
 	float stepsT = 0.0;
 	for (int steps = 0; steps < MAX_STEPS; ++steps)
 	{

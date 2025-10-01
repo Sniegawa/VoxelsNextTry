@@ -11,10 +11,18 @@ struct ivec3Hash {
 	}
 };
 
+struct DefferedVoxel
+{
+	glm::ivec3 worldPos;
+	glm::ivec3 chunkPos;
+	uint8_t voxelType;
+};
+
 enum class VoxelAction {
 	Add,
 	Remove
 };
+
 
 class World {
 public:
@@ -74,11 +82,12 @@ private:
 
 	void GenerateChunkDecorations(Chunk* chunk);
 
-	void PlaceDecoration(glm::ivec3 Position,int DecorationID);
+	void PlaceDecoration(glm::ivec3 WorldPosition,int DecorationID);
 
 private:
 	const glm::ivec3 m_ChunkSize = glm::ivec3(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_DEPTH);
 	std::unordered_map<glm::ivec3, std::unique_ptr<Chunk>, ivec3Hash> m_Chunks;
+	std::vector<DefferedVoxel> m_DefferedVoxels;
 
 	std::vector<Decoration> m_Decorations;
 };
