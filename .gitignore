@@ -6,3 +6,5 @@
 /out/build/x64-Debug
 /CMakeSettings.json
 /out/build/x64-Release
+.cache
+build
